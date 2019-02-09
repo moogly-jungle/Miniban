@@ -1,7 +1,7 @@
 # coding: utf8
 
 # maximum brut power requested to motor
-max_power = 500
+max_power = 450
 
 # terminal parameters
 term_silent = True

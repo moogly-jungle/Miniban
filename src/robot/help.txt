@@ -4,8 +4,16 @@ Interface de programmation du robot
 
 Liste des commandes:
 
+- bot.check()
+  Vérifie l'état général du robot et affiche un rapport
+
 - bot.photo()
-  cette commande prend une photo avec la caméra du robot. La photo est
+  Cette commande prend une photo avec la caméra du robot. La photo est
   enregistrée dans le fichier image.jpg. Elle est disponible aussi sur
   le serveur web du robot: pour la consulter, tu peux ouvrir un
   navigateur web et aller à l'adresse http://192.168.16.119/image.jpg
+
+- bot.play(<exemple>)
+  Permet d'exécuter l'exemple proposé. Les exemples sont dans le
+  répertoire 'exemples' de la distribution. Ils contiennent chacun une
+  procedure 'play' qui est exécutée par le robot.

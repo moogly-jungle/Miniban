@@ -1,6 +1,7 @@
 # coding: utf8
 import params
 import term_util as term
+import sys
 
 term.separator()
 term.ppln('Bienvenue dans le terminal de commande du robot')
@@ -17,3 +18,6 @@ if bot.is_ready():
 else:
     term.ppln('[problème dans l\'initialisation du robot]', style=['red'])
 term.endl()
+
+sys.ps1 = 'miniban> '
+
