@@ -4,6 +4,17 @@ Interface de programmation du robot
 
 Liste des commandes:
 
+- bot.motor_voltage()
+  Donne la tension de l'alimentation de chaque moteur (en Volt)
+
+- bot.motor_temperature()
+  Donne la température de chaque moteur (en degré)
+
+- bot.distance(pos)
+  Donne la valeur du capteur de distance indiqué par pos. Les valeurs
+  possibles de pos sont 'avant', 'gauche' ou 'droit' pour les capteurs
+  avant et latéraux. la valeur est donnée en mètre.
+
 - bot.check()
   Vérifie l'état général du robot et affiche un rapport
 
