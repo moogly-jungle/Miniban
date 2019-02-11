@@ -1,7 +1,13 @@
 # coding: utf8
 import params
-import term_util as term
 import sys
+
+sys.path.append(params.base_dir + '/src')
+sys.path.append(params.base_dir + '/src/lib')
+sys.path.append(params.base_dir + '/src/robot')
+sys.path.append(params.base_dir + '/src/exemples')
+
+import term_util as term
 
 term.separator()
 term.ppln('Bienvenue dans le terminal de commande du robot')

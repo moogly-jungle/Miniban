@@ -3,3 +3,4 @@ Miniban todo list
 - udev rule pour la maple mini
 - il faudrait des leds (retour d'info minimum)
 - verifier que les moteurs sont bien branchés
+- mettre en oeuvre le gyro

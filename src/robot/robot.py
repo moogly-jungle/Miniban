@@ -16,8 +16,9 @@ servo_names = ["avant gauche", "arrière gauche",
 class Robot:
 
     def __init__(self):
-        term.pp("- connexion aux moteurs ... ")
+        self.ready = True
         try:
+            term.pp("- connexion aux moteurs ... ")
             ports = pypot.dynamixel.get_available_ports()
             self.dxl = pypot.dynamixel.DxlIO(ports[0], baudrate=1000000)
             self.left_up = 1
@@ -30,33 +31,40 @@ class Robot:
             time.sleep(0.5)
             self.temperatures = self.motor_temperature()
             term.ppln("ok", style = ['green'])
-            self.check()
-            self.ready = True
         except:
             term.ppln("error", style = ['red'])
             self.ready = False
-        self.camera = camera.Camera()
 
+        term.pp("- connexion à la caméra ... ")
+        self.camera = camera.Camera()
+        if self.camera.ready: term.ppln('[ok]', style = ['green'])
+        else: term.ppln("error", style = ['red'])
+
+        self.check()
+            
     def is_ready(self):
         return self.ready
 
     def check(self):
-        term.ppln('- initialisation procédure de test globale')
-        temps = self.motor_temperature()
-        voltages = self.motor_voltage()
-        term.ppln('  - check moteurs:')
         all_ok = True
-        for m in range(4):
-            t = temps[m]
-            v = voltages[m]
-            v_str = "%0.2f" % v
-            term.pp('    ['+servo_names[m]+'] \ttemp: ' + str(t) + '° ')
-            term.pp('\tvolt: ' + v_str + 'V ')
-            if t < 50 and v > 9.98:
-                term.ppln(' \t[ok]', style=['green'])
-            else:
-                term.ppln(' \t[error]', style=['red'])
-                all_ok = False
+        term.ppln('- initialisation procédure de test globale')
+        term.ppln('  - check moteurs:')
+        try:
+            temps = self.motor_temperature()
+            voltages = self.motor_voltage()
+            for m in range(4):
+                t = temps[m]
+                v = voltages[m]
+                v_str = "%0.2f" % v
+                term.pp('    ['+servo_names[m]+'] \ttemp: ' + str(t) + '° ')
+                term.pp('\tvolt: ' + v_str + 'V ')
+                if t < 50 and v > 9.98:
+                    term.ppln(' \t[ok]', style=['green'])
+                else:
+                    term.ppln(' \t[error]', style=['red'])
+                    all_ok = False
+        except:
+            term.ppln('    [erreur]', style=['red'])
         term.ppln('  - check capteurs:')
         dist_sensors = ['avant']
         for s in dist_sensors:
@@ -66,6 +74,13 @@ class Robot:
             else:
                 term.ppln('[erreur]', style=['red'])
                 all_ok = False
+
+        term.pp('    [camera] ... ')
+        if self.camera.ready:
+            term.ppln('[ok]', style=['green'])
+        else:
+            term.ppln('[erreur]', style=['red'])
+            all_ok = False
 
         if all_ok:
             term.pp('- procédure de test globale ... ')
@@ -113,7 +128,7 @@ class Robot:
     def help(self):
         with open('src/robot/help.txt') as f:
             for line in f:
-                print line,
+                print (line, end='')
 
     def play(self, module_name):
         try:
@@ -126,7 +141,7 @@ class Robot:
     def dbg_imu(self):
         rp = DxlReadDataPacket(241, 36, 110)
         sp = self.dxl._send_packet(rp)
-        print sp
+        print (sp)
 
     def adc_brut_values(self):
         N = 5
