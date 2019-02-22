@@ -247,3 +247,13 @@ def bound(x,m,M):
     if x < m: return m
     if x > M: return M
     return x
+
+def ubyte2short(b1,b2):
+    sign = b2 > 127
+    b = (b2 << 8) + b1
+    c = (b ^ 0xffff)+1
+    v = -c if sign else b 
+    return v
+
+def ubyte2uint(b1,b2,b3,b4):
+    return b1 + (b2 << 8) + (b3 << 16) + (b4 << 24)

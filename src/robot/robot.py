@@ -8,6 +8,7 @@ import term_util as term
 import camera
 import util
 import importlib
+import imu_reader
 from pypot.dynamixel.protocol.v1 import DxlReadDataPacket
 
 servo_names = ["avant gauche", "arrière gauche",
@@ -30,7 +31,7 @@ class Robot:
             self.dxl.set_wheel_mode(self.servos)
             time.sleep(0.5)
             self.temperatures = self.motor_temperature()
-            term.ppln("ok", style = ['green'])
+            term.ppln("[ok]", style = ['green'])
         except:
             term.ppln("error", style = ['red'])
             self.ready = False
@@ -40,6 +41,15 @@ class Robot:
         if self.camera.ready: term.ppln('[ok]', style = ['green'])
         else: term.ppln("error", style = ['red'])
 
+        term.pp("- calibration de l'imu ... ")
+        self.imu = imu_reader.ImuReader(self)
+        self.imu.start()
+        time.sleep(0.250)
+        self.imu.calib(3)
+        time.sleep(3)
+        self.imu.reset_orientation()
+        term.ppln('[ok]', style = ['green'])
+        
         self.check()
             
     def is_ready(self):
@@ -66,7 +76,7 @@ class Robot:
         except:
             term.ppln('    [erreur]', style=['red'])
         term.ppln('  - check capteurs:')
-        dist_sensors = ['avant']
+        dist_sensors = ['avant', 'droite', 'gauche']
         for s in dist_sensors:
             term.pp('    [dist. ' + s + '] ... ') 
             if self.check_distance_sensor(s):
@@ -103,10 +113,13 @@ class Robot:
         self.camera.take_photo(filename)
         
     def roule(self, v_gauche, v_droite, duree = 0):
-        nvg = util.bound(v_gauche, -params.max_power, params.max_power)
-        nvd = util.bound(v_droite, -params.max_power, params.max_power)
-        if not nvg == v_gauche or \
-           not nvd == v_droite:
+        ratio = 0.026
+        p_gauche = int(v_gauche / ratio)
+        p_droite = int(v_droite / ratio)
+        nvg = util.bound(p_gauche, -params.max_power, params.max_power)
+        nvd = util.bound(p_droite, -params.max_power, params.max_power)
+        if not nvg == p_gauche or \
+           not nvd == p_droite:
             log.warning('vitesse trop grande, limitée à ' + str(params.max_power))
         self.dxl.set_moving_speed({self.left_up:nvg,
                                    self.left_down:nvg,
@@ -118,6 +131,9 @@ class Robot:
 
     def avance(self, v, duree=0):
         self.roule(v,v,duree)
+
+    def stop(self):
+        self.roule(0,0)
 
     def recule(self, v, duree=0):
         self.roule(-v,-v,duree)
@@ -137,12 +153,7 @@ class Robot:
             m.play(self)
         except:
             term.ppln('erreur avec le module ' + module_name)
-
-    def dbg_imu(self):
-        rp = DxlReadDataPacket(241, 36, 110)
-        sp = self.dxl._send_packet(rp)
-        print (sp)
-
+        
     def adc_brut_values(self):
         N = 5
         sp = self.dxl._send_packet(DxlReadDataPacket(240, 36, N*2))
@@ -168,21 +179,24 @@ class Robot:
             term.ppln(str(echantillon))
             term.ppln('std dev: ' + str(stddev))
         return stddev > 0
-    
+
     def distance(self, pos = None):
         """ donne la valeur des capteurs de distances (m)
             pos peut être None, 'avant', 'droite' ou 'gauche' """
         adc_values = self.adc_brut_values()
-        adc_to_dist_sensor = [0] # the list of dist sensor from adc values
+        pos_to_adc = { 'avant': 0, 'droite': 2, 'gauche': 3 } 
+        adc_to_dist_sensor = [0,2,3] # the list of dist sensor from adc values
         a = -2.8571428571428563 # empirical values from measures
         b = 7421.938775510203   # on assume the transformation function
         c = 110.4285714285714   # to be of form a + b / (x+c)
-        values = []
-        for i in adc_to_dist_sensor:
-            d = a + b / (adc_values[i] + c)
-            values.append(d/100)
+        values = {}
+        for p,idx in pos_to_adc.items():
+            d = a + b / (adc_values[idx] + c)
+            values[p] = d
         if pos is None: return values
-        elif pos is "avant": return values[0]
+        elif pos in [ 'avant', 'droite', 'gauche' ]:
+            return values[pos]
         else:
             log.warning('capteur de distance inconnu (' + str(pos) + ')')
             return None
+ 
