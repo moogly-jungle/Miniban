@@ -7,6 +7,7 @@ import util
 import copy
 import chrono
 import numpy as np
+import term_util as term
 
 class ImuReader(threading.Thread):
     
@@ -14,7 +15,8 @@ class ImuReader(threading.Thread):
         threading.Thread.__init__(self)
         self.mutex = threading.Lock()
         self.robot = robot
-
+        self.alive = False
+        
         self.accelero = np.array([0,0,0], dtype = np.float32)  # acceleration in g
         self.gyro = np.array([0,0,0], dtype = np.float32) # gyro in deg/sec
         self.gyro_zero = None
@@ -43,6 +45,7 @@ class ImuReader(threading.Thread):
             else:
                 self.dt = self.tick_chrono.measure()
             self.mutex.acquire()
+            self.alive = True
             self.update_imu()
             self.calib_tick()
             if self.dt is not None: self.update_orientation()
@@ -56,6 +59,9 @@ class ImuReader(threading.Thread):
                 period = delta_t / 100
                 self.frequency = 1.0 / period
             self.mutex.release()
+        self.mutex.acquire()
+        self.alive = False
+        self.mutex.release()
 
     def update_orientation(self):
         v = self.gyro[2] - self.gyro_zero[2] if self.gyro_zero is not None else self.gyro[2]
@@ -156,4 +162,10 @@ class ImuReader(threading.Thread):
         self.mutex.acquire()
         self.ok = False
         self.mutex.release()
-
+        while True:
+            done = False
+            self.mutex.acquire()
+            if not self.alive: done = True 
+            self.mutex.release()
+            if done: break
+        term.ppln('- imu reader killed')

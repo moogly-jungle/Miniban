@@ -7,6 +7,7 @@ import pypot.dynamixel
 import term_util as term
 import camera
 import util
+import display
 import importlib
 import imu_reader
 from pypot.dynamixel.protocol.v1 import DxlReadDataPacket
@@ -41,17 +42,35 @@ class Robot:
         if self.camera.ready: term.ppln('[ok]', style = ['green'])
         else: term.ppln("error", style = ['red'])
 
-        term.pp("- calibration de l'imu ... ")
+        term.pp("- calibration de l'imu ")
         self.imu = imu_reader.ImuReader(self)
         self.imu.start()
         time.sleep(0.250)
-        self.imu.calib(3)
-        time.sleep(3)
+        self.imu.calib(1)
+        time.sleep(1)
+        term.pp('.')
+        time.sleep(1)
+        term.pp('.')
+        time.sleep(1)
+        term.pp('. ')
         self.imu.reset_orientation()
         term.ppln('[ok]', style = ['green'])
+
+        term.pp('- Initialisation de l\'affichage ...')
+        self.display = display.Display()
+        if self.display.ready: term.ppln('[ok]', style = ['green'])
+        else: term.ppln("error", style = ['red'])
         
         self.check()
-            
+
+    def kill(self):
+        self.imu.kill()
+        self.display.kill()
+        print('bye bye baby!')
+        
+    def print_lines(self, lines):
+        self.display.print_lines(lines)
+        
     def is_ready(self):
         return self.ready
 
@@ -98,6 +117,7 @@ class Robot:
         else:
             log.warning('Erreur procédure de test')
 
+        return all_ok
                 
     def motor_temperature(self):
         """ return the temperature of all the motors (deg) """
@@ -140,6 +160,28 @@ class Robot:
 
     def pivote(self, v, duree=0):
         self.roule(v,-v,duree)
+
+    def pivote_angle(self, angle):
+        theta0 = self.imu.get_orientation()
+        while angle < -180: angle += 360
+        while angle > 180: angle -= 360        
+        erreur0 = angle - theta0
+        seuil = 0.1
+        while True:
+            delta_theta = self.imu.get_orientation() - theta0
+            erreur = angle - delta_theta
+            v = -0.2 * erreur
+            sign = 1 if v > 0 else -1
+            v_abs = abs(v)
+            if v_abs < 3: v_abs = 3
+            if abs(erreur) > 5 or v_abs > 10: v_abs = 10
+            v = sign * v_abs
+            self.pivote(v)
+            if (erreur0 < 0 and erreur > -seuil) or (erreur0 > 0 and erreur < seuil):
+               break
+            time.sleep(0.01)
+        self.stop()
+        print ("Erreur: %0.1f°" % (angle - (self.imu.get_orientation() - theta0)))
 
     def help(self):
         with open('src/robot/help.txt') as f:

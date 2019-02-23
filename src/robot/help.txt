@@ -18,6 +18,10 @@ Liste des commandes:
 - bot.check()
   Vérifie l'état général du robot et affiche un rapport
 
+- bot.print_lines(lines)
+  Affiche du texte sur l'écran. Le texte est donné sous la forme d'une
+  liste de chaînes de caractères.
+
 - bot.photo()
   Cette commande prend une photo avec la caméra du robot. La photo est
   enregistrée dans le fichier image.jpg. Elle est disponible aussi sur
@@ -28,3 +32,6 @@ Liste des commandes:
   Permet d'exécuter l'exemple proposé. Les exemples sont dans le
   répertoire 'exemples' de la distribution. Ils contiennent chacun une
   procedure 'play' qui est exécutée par le robot.
+
+- bot.kill()
+  Eteint tout le système

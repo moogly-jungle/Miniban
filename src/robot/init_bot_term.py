@@ -4,6 +4,7 @@ import sys
 
 sys.path.append(params.base_dir + '/src')
 sys.path.append(params.base_dir + '/src/lib')
+sys.path.append(params.base_dir + '/src/lib/display')
 sys.path.append(params.base_dir + '/src/robot')
 sys.path.append(params.base_dir + '/src/exemples')
 

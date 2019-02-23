@@ -1,7 +1,7 @@
 import params
+import os
 import time
 import json
-import os
 import sys
 import operator
 import math
@@ -9,6 +9,7 @@ from math import *
 import smtplib
 from email.mime.text import MIMEText
 import dateutil.parser
+import re
 
 util_verbose = 0
 
@@ -257,3 +258,49 @@ def ubyte2short(b1,b2):
 
 def ubyte2uint(b1,b2,b3,b4):
     return b1 + (b2 << 8) + (b3 << 16) + (b4 << 24)
+
+
+
+wlan_re = re.compile(r'.*wlan.*')
+inet_re = re.compile(r'.*inet ([^ ]+) .*')
+essid_re = re.compile(r'.*ESSID:"([^ ]+)"')
+
+def get_ip_address():
+    now = False
+    p = os.popen('ifconfig',"r")
+    ip_address = None
+    while 1:
+        line = p.readline()
+        if not line: break
+        line = line[:-1]
+        m = wlan_re.match(line)
+        if m: now = True
+        m = inet_re.match(line)
+        if m and now:
+            ip_address = m.group(1)
+            break
+    if ip_address is not None:
+        return ip_address
+    else:
+        return 'unknown'
+
+def get_essid():
+    essid = None
+    p = os.popen('iwconfig 2>/dev/null',"r")
+    while 1:
+        line = p.readline()
+        if not line: break
+        line = line[:-1]
+        m = essid_re.match(line)
+        if m: 
+            essid = m.group(1)
+            break
+    if essid is not None:
+        return essid
+    else:
+        return 'unknown'
+
+def date():
+    p = os.popen('date --rfc-3339=seconds', "r")
+    return p.readline()[:-1]
+    
