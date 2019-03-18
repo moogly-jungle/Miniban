@@ -13,7 +13,7 @@ import imu_reader
 from pypot.dynamixel.protocol.v1 import DxlReadDataPacket
 
 servo_names = ["avant gauche", "arrière gauche",
-              "avant droit", "arrière droit"]
+               "avant droit", "arrière droit"]
 
 class Robot:
 
@@ -33,8 +33,13 @@ class Robot:
             time.sleep(0.5)
             self.temperatures = self.motor_temperature()
             term.ppln("[ok]", style = ['green'])
+            self.avance(vitesse = 5, duree=0.05)
+            self.avance(vitesse = -5, duree=0.05)
+            time.sleep(1)
         except:
-            term.ppln("error", style = ['red'])
+            term.ppln("[error]", style = ['red'])
+            term.ppln("  *verifiez que la batterie arrière est en service*", style = ['red'])
+            term.ppln("  *l'affichage de l'état de la batterie doit être actif*", style = ['red'])
             self.ready = False
 
         term.pp("- connexion à la caméra ... ")
@@ -42,6 +47,11 @@ class Robot:
         if self.camera.ready: term.ppln('[ok]', style = ['green'])
         else: term.ppln("error", style = ['red'])
 
+        term.pp('- Initialisation de l\'affichage ... ')
+        self.display = display.Display()
+        if self.display.ready: term.ppln('[ok]', style = ['green'])
+        else: term.ppln("error", style = ['red'])
+        
         term.pp("- calibration de l'imu ")
         self.imu = imu_reader.ImuReader(self)
         self.imu.start()
@@ -56,12 +66,16 @@ class Robot:
         self.imu.reset_orientation()
         term.ppln('[ok]', style = ['green'])
 
-        term.pp('- Initialisation de l\'affichage ...')
-        self.display = display.Display()
-        if self.display.ready: term.ppln('[ok]', style = ['green'])
-        else: term.ppln("error", style = ['red'])
-        
         self.check()
+
+    def debug_motor(self):
+        self.imu.kill()
+        self.display.kill()
+        self.dxl.close()
+        ports = pypot.dynamixel.get_available_ports()
+        print ('ports : %s' % str(ports))
+        dxl = pypot.dynamixel.DxlIO(ports[0], baudrate=1000000)
+        print ('scan: %s' % str(dxl.scan()))
 
     def kill(self):
         self.imu.kill()
@@ -149,23 +163,56 @@ class Robot:
             time.sleep(duree)
             self.dxl.set_moving_speed({1:0, 6:0, 7:0, 15:0})
 
-    def avance(self, v, duree=0):
-        self.roule(v,v,duree)
-
+    # le robot avance en ligne droite, vitesse en cm/s, distance en cm, duree en seconde
+    def avance(self, vitesse = None, distance = None, duree=0):
+        if duree < 0:
+            log.warning('avance: la durée doit être un nombre positif')
+            return
+        if vitesse is None and distance is None:
+            log.warning('avance: il faut que tu me donnes une vitesse (en cm/s) et/ou bien une distance (en cm)')
+            return
+        if vitesse is not None and distance is None:
+            self.roule(vitesse,vitesse,duree)
+        elif vitesse is None and distance is not None:
+            if duree == 0:
+                v_default = 5 # cm seconde
+            else:
+                v_default = abs(distance) / duree
+            v = v_default
+            if distance < 0: v = -v_default
+            delta_t = abs(distance / v)
+            self.roule(v,v,delta_t)
+        else:
+            if vitesse < 0:
+                log.warning('avance: si la distance est donnée, alors, on ne tient pas compte du signe de la vitesse')
+            if duree != 0:
+                log.warning('avance: si la distance et la vitesse sont donnée, la duree est en trop...')
+            v = abs(vitesse)
+            if distance < 0: v = -v
+            delta_t = abs(distance / v)
+            self.roule(v,v,delta_t)
+            
     def stop(self):
         self.roule(0,0)
 
-    def recule(self, v, duree=0):
-        self.roule(-v,-v,duree)
-
-    def pivote(self, v, duree=0):
-        self.roule(v,-v,duree)
-
-    def pivote_angle(self, angle):
-        theta0 = self.imu.get_orientation()
+    def pivote(self, vitesse = None, angle = None, duree = 0):
+        if duree < 0:
+            log.warning('pivote: la durée doit être une nombre positif')
+        if angle is None and vitesse is None:
+            log.warning('pivote: il me faut une vitesse et/ou un angle')
+            return
+        if angle is None and vitesse is not None:
+            self.roule(vitesse,-vitesse,duree)
+            return
+        v_max = 15
         while angle < -180: angle += 360
         while angle > 180: angle -= 360        
-        erreur0 = angle - theta0
+        if vitesse is not None:
+            if duree > 0:
+                log.warning('pivote: si l\'angle est donné et la vitesse aussi, la durée est superflue')
+            v_max = abs(vitesse)
+        theta0 = self.imu.get_orientation()
+        erreur0 = angle
         seuil = 0.1
         while True:
             delta_theta = self.imu.get_orientation() - theta0
@@ -174,14 +221,16 @@ class Robot:
             sign = 1 if v > 0 else -1
             v_abs = abs(v)
             if v_abs < 3: v_abs = 3
-            if abs(erreur) > 5 or v_abs > 10: v_abs = 10
+            if abs(erreur) > 5 or v_abs > v_max: v_abs = v_max
             v = sign * v_abs
             self.pivote(v)
             if (erreur0 < 0 and erreur > -seuil) or (erreur0 > 0 and erreur < seuil):
                break
             time.sleep(0.01)
         self.stop()
-        print ("Erreur: %0.1f°" % (angle - (self.imu.get_orientation() - theta0)))
+        erreur = angle - (self.imu.get_orientation() - theta0)
+        if abs(erreur) > 5:
+            log.warning("pivote: erreur: %0.1f°" % (erreur))
 
     def help(self):
         with open('src/robot/help.txt') as f:

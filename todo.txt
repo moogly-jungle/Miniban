@@ -1,5 +1,7 @@
 Miniban todo list
 
+- vérification de l'IMU dans le check
+- ajuster le capteur de distance (décalage !)
 - udev rule pour la maple mini
 - il faudrait des leds (retour d'info minimum)
 - verifier que les moteurs sont bien branchés

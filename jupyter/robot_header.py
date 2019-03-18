@@ -5,6 +5,7 @@
 import sys
 sys.path.append('../src')
 sys.path.append('../src/lib')
+sys.path.append('../src/lib/display')
 sys.path.append('../src/robot')
 import params
 import util
